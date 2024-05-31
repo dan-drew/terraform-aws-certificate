@@ -8,10 +8,12 @@ terraform {
 }
 
 data "aws_route53_zone" "domain" {
-  name = coalesce(var.zone, var.domain)
+  count = coalesce(var.zone_id) == null ? 1 : 0
+  name  = coalesce(var.zone, var.domain)
 }
 
 locals {
+  zone_id     = coalesce(var.zone_id, try(data.aws_route53_zone.domain.0.zone_id, null))
   domain_name = var.wildcard ? "*.${var.domain}" : var.domain
   alt_names   = var.wildcard ? [var.domain] : []
 }
@@ -45,5 +47,5 @@ resource "aws_route53_record" "domain_validation" {
   records         = [each.value.resource_record_value]
   ttl             = 60
   type            = each.value.resource_record_type
-  zone_id         = data.aws_route53_zone.domain.zone_id
+  zone_id         = local.zone_id
 }
